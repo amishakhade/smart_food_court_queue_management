@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Order Confirmed - #{{ order.order_number }}{% endblock %}
+{% block page_id %}order-confirmation{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Order Success Banner -->
+            <div class="text-center mb-4">
+                <div class="d-inline-flex align-items-center justify-content-center bg-success text-white rounded-circle mb-3 shadow" style="width: 72px; height: 72px; font-size: 2.2rem;">
+                    <i class="bi bi-check2"></i>
+                </div>
+                <h2 class="fw-bold mb-1">Order Placed Successfully!</h2>
+                <p class="text-muted">Thank you, <span class="fw-semibold text-dark">{{ order.customer_name }}</span>. Your order has entered the food court kitchen queue.</p>
+            </div>
+
+            <!-- Queue Token & QR Card -->
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden mb-4">
+                <div class="card-header bg-dark text-white p-4 text-center">
+                    <span class="badge bg-warning text-dark px-3 py-1 rounded-pill fw-bold text-uppercase mb-2">Live Token</span>
+                    <h1 class="display-3 fw-bold mb-0 text-white tracking-wider">
+                        {{ order.queue_entry.queue_display if order.queue_entry else 'Q-...' }}
+                    </h1>
+                    <small class="text-light opacity-75">Order Reference: {{ order.order_number }}</small>
+                </div>
+                
+                <div class="card-body p-4 p-md-5 text-center bg-white">
+                    <div class="row align-items-center g-4">
+                        <!-- QR Code Section -->
+                        <div class="col-md-6 border-end-md">
+                            <h6 class="fw-bold text-dark mb-3"><i class="bi bi-qr-code-scan me-1 text-primary"></i> Pickup QR Code</h6>
+                            <div class="qr-container mb-3">
+                                {% if order.qr_code_path %}
+                                    <img src="{{ url_for('static', filename=order.qr_code_path) }}" alt="Order QR Code" class="qr-image">
+                                {% else %}
+                                    <div class="p-4 bg-light text-muted">QR code generating...</div>
+                                {% endif %}
+                            </div>
+                            <div>
+                                {% if order.qr_code_path %}
+                                    <a href="{{ url_for('static', filename=order.qr_code_path) }}" download="Order_{{ order.order_number }}_QR.png" class="btn btn-outline-dark btn-sm rounded-pill px-3">
+                                        <i class="bi bi-download me-1"></i> Download QR Pass
+                                    </a>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted d-block mt-2">
+                                Flash this QR code at the counter when order is called.
+                            </small>
+                        </div>
+
+                        <!-- Queue Status Metrics -->
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-4 mb-3 text-start">
+                                <span class="text-muted small fw-semibold text-uppercase">Current Queue Spot</span>
+                                <h4 class="fw-bold text-primary mb-0">
+                                    {% if position and position > 0 %}
+                                        #{{ position }} in preparation queue
+                                    {% else %}
+                                        Now in Kitchen
+                                    {% endif %}
+                                </h4>
+                            </div>
+
+                            <div class="p-3 bg-light rounded-4 mb-3 text-start">
+                                <span class="text-muted small fw-semibold text-uppercase">Estimated Waiting Time</span>
+                                <h4 class="fw-bold text-success mb-0">
+                                    ~{{ estimated_wait_mins }} minutes
+                                </h4>
+                            </div>
+
+                            <div class="p-3 bg-light rounded-4 text-start">
+                                <span class="text-muted small fw-semibold text-uppercase">Payment Method</span>
+                                <h5 class="fw-bold text-dark mb-0">
+                                    {{ order.payment.payment_method if order.payment else 'Cash on Pickup' }}
+                                    <span class="badge bg-{{ 'success' if order.payment and order.payment.status == 'Paid' else 'warning text-dark' }} fs-6 ms-2">
+                                        {{ order.payment.status if order.payment else 'Pending' }}
+                                    </span>
+                                </h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card Footer Actions -->
+                <div class="card-footer bg-light p-4 text-center border-top">
+                    <div class="d-flex flex-wrap justify-content-center gap-3">
+                        <a href="{{ url_for('student.track_order', order_number=order.order_number) }}" class="btn btn-primary btn-lg px-4 shadow-sm fw-bold">
+                            <i class="bi bi-broadcast me-2"></i> Open Live Tracking Screen
+                        </a>
+                        <a href="{{ url_for('student.menu') }}" class="btn btn-outline-secondary btn-lg px-4">
+                            Back to Menu
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ordered Items Breakdown -->
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-bottom p-3">
+                    <h5 class="fw-bold mb-0">Items in This Order</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Item</th>
+                                    <th class="text-center">Qty</th>
+                                    <th class="text-end">Unit Price</th>
+                                    <th class="text-end">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order.items %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ item.item_name }}</td>
+                                        <td class="text-center">{{ item.quantity }}</td>
+                                        <td class="text-end">₹{{ "%.2f"|format(item.unit_price) }}</td>
+                                        <td class="text-end fw-bold">₹{{ "%.2f"|format(item.subtotal) }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="3" class="text-end fs-5">Grand Total:</th>
+                                    <th class="text-end fs-5 text-success">₹{{ "%.2f"|format(order.total_amount) }}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

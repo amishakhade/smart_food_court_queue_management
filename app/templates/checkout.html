@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout - Place Food Order{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="mb-4">
+        <h2 class="fw-bold mb-1">Confirm Order Details</h2>
+        <p class="text-muted mb-0">Provide contact details for your queue token and pickup notification.</p>
+    </div>
+
+    <form id="checkout-form" method="POST" action="{{ url_for('student.checkout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" id="cart_data_input" name="cart_data" value="[]">
+
+        <div class="row g-4">
+            <!-- Customer Information & Payment -->
+            <div class="col-lg-7">
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-bottom p-3">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-person-lines-fill text-primary me-2"></i> Student / Customer Details</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <label for="name" class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-lg" id="name" name="name" 
+                                       value="{{ current_user.full_name if current_user else '' }}" required placeholder="e.g. Aarav Sharma">
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="phone" class="form-label fw-semibold">Mobile Number <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control form-control-lg" id="phone" name="phone" 
+                                       value="{{ current_user.phone if current_user else '' }}" required placeholder="10-digit mobile number">
+                                <small class="text-muted">Used for counter pickup verification.</small>
+                            </div>
+                            <div class="col-12">
+                                <label for="email" class="form-label fw-semibold">Email Address (Optional)</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ current_user.email if current_user else '' }}" placeholder="student@campus.edu">
+                            </div>
+                            <div class="col-12">
+                                <label for="special_instructions" class="form-label fw-semibold">Special Instructions (Optional)</label>
+                                <textarea class="form-control" id="special_instructions" name="special_instructions" rows="2" 
+                                          placeholder="e.g. Less spicy, pack extra mint chutney, extra napkins..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Selection -->
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-header bg-white border-bottom p-3">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-wallet2 text-success me-2"></i> Payment Selection</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="form-check p-3 border rounded-3 mb-3 bg-light">
+                            <input class="form-check-input ms-0 me-3" type="radio" name="payment_method" id="pay_cash" value="Cash on Pickup" checked>
+                            <label class="form-check-label w-100" for="pay_cash">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="fw-bold mb-1"><i class="bi bi-cash-stack text-success me-2"></i> Cash on Pickup</h6>
+                                        <small class="text-muted">Pay exact cash directly at the counter upon food collection.</small>
+                                    </div>
+                                    <span class="badge bg-secondary">Pay at Counter</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="form-check p-3 border rounded-3 bg-light">
+                            <input class="form-check-input ms-0 me-3" type="radio" name="payment_method" id="pay_upi" value="Demo UPI">
+                            <label class="form-check-label w-100" for="pay_upi">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="fw-bold mb-1"><i class="bi bi-qr-code text-primary me-2"></i> Demo UPI (Instant Mock Simulation)</h6>
+                                        <small class="text-muted">Fast simulation of GPay / PhonePe / Paytm with instant verified receipt.</small>
+                                    </div>
+                                    <span class="badge bg-info text-dark">Instant Mock</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Review Sidebar -->
+            <div class="col-lg-5">
+                <div class="card border-0 shadow-sm rounded-4 sticky-top" style="top: 85px;">
+                    <div class="card-header bg-white border-bottom p-3">
+                        <h5 class="fw-bold mb-0">Order Review</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <ul class="list-group list-group-flush mb-3" id="checkout-items-list">
+                            <!-- Populated dynamically via JS -->
+                        </ul>
+
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Subtotal</span>
+                            <span class="fw-semibold" id="checkout-total-val">₹0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="text-muted">Service Charge</span>
+                            <span class="text-success fw-semibold">₹0.00</span>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <span class="fs-5 fw-bold">Total Payable</span>
+                            <span class="fs-4 fw-bold text-success" id="checkout-final-total">₹0.00</span>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg w-100 shadow-sm py-3 fw-bold">
+                            <i class="bi bi-bag-check-fill me-2"></i> Confirm & Place Order
+                        </button>
+
+                        <div class="text-center mt-3">
+                            <small class="text-muted">
+                                By confirming, your order joins the active kitchen preparation queue.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const total = FoodCourtCart.getTotal();
+        const finalEl = document.getElementById('checkout-final-total');
+        if (finalEl) finalEl.textContent = `₹${total.toFixed(2)}`;
+    });
+</script>
+{% endblock %}

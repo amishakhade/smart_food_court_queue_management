@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Category Management - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-md-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <span class="badge bg-danger text-uppercase fw-bold">Menu Classification</span>
+            <h2 class="fw-bold mb-0">Food Categories</h2>
+            <p class="text-muted small mb-0">Organize food offerings into intuitive sections for students.</p>
+        </div>
+        <div class="d-flex gap-2 mt-3 mt-md-0">
+            <button type="button" class="btn btn-primary fw-bold rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                <i class="bi bi-plus-lg me-1"></i> Add New Category
+            </button>
+            <a href="{{ url_for('admin.menu_management') }}" class="btn btn-outline-dark rounded-pill px-3">
+                <i class="bi bi-egg-fried me-1"></i> Food Items
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        {% for cat in categories %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="category-icon-box m-0">
+                            <i class="bi {{ cat.icon }}"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-0">{{ cat.name }}</h5>
+                            <small class="text-muted">{{ cat.items.count() }} Dishes Assigned</small>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-3 flex-grow-1">{{ cat.description or 'No category description provided.' }}</p>
+                    <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                        <span class="badge bg-light text-dark border">Order: #{{ cat.display_order }}</span>
+                        <a href="{{ url_for('student.menu', category=cat.id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3" target="_blank">
+                            View Dishes <i class="bi bi-box-arrow-up-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Add Category Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0">
+            <div class="modal-header border-bottom p-4">
+                <h5 class="modal-title fw-bold">Add Menu Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin.categories') }}">
+                <div class="modal-body p-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Category Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" required placeholder="e.g. Quick Bites, Healthy Bowls">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Bootstrap Icon Class</label>
+                        <input type="text" class="form-control" name="icon" value="bi-cup-hot" placeholder="bi-cup-hot, bi-egg-fried, bi-cake2">
+                        <small class="text-muted">Choose any Bootstrap 5 icon class name.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Display Sequence Order</label>
+                        <input type="number" class="form-control" name="display_order" value="10">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea class="form-control" name="description" rows="2" placeholder="Brief info about items in this group"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top p-3">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Create Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

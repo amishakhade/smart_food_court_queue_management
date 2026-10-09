@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}All Orders & Queue Oversight - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-md-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <span class="badge bg-danger text-uppercase fw-bold">Transaction Ledger</span>
+            <h2 class="fw-bold mb-0">Order & Queue Management</h2>
+            <p class="text-muted small mb-0">Search, filter, and review every student transaction and current preparation status.</p>
+        </div>
+        <div class="d-flex gap-2 mt-3 mt-md-0">
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary rounded-pill px-3">
+                <i class="bi bi-speedometer2 me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Search & Filter Card -->
+    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-4">
+        <form method="GET" action="{{ url_for('admin.orders') }}">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-6 col-lg-4">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                        <input type="text" name="search" class="form-control" placeholder="Search order #, customer name, phone..." value="{{ search_query }}">
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-lg-3">
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        {% for st in OrderStatus.ALL %}
+                            <option value="{{ st }}" {% if status_filter == st %}selected{% endif %}>{{ st }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 w-100">Filter</button>
+                </div>
+
+                {% if search_query or status_filter %}
+                    <div class="col-md-2">
+                        <a href="{{ url_for('admin.orders') }}" class="btn btn-outline-secondary rounded-pill w-100">Reset</a>
+                    </div>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Token / Order #</th>
+                        <th>Student Details</th>
+                        <th>Items Ordered</th>
+                        <th>Total Amount</th>
+                        <th>Payment Record</th>
+                        <th>Placed Time</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Status Control</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ord in orders %}
+                        <tr>
+                            <td class="ps-4">
+                                <span class="badge bg-dark fs-6 px-3 py-1 rounded-3">{{ ord.queue_entry.queue_display if ord.queue_entry else 'Q-...' }}</span>
+                                <div class="small text-muted mt-1">{{ ord.order_number }}</div>
+                            </td>
+                            <td>
+                                <div class="fw-bold">{{ ord.customer_name }}</div>
+                                <small class="text-muted"><i class="bi bi-phone me-1"></i>{{ ord.customer_phone }}</small>
+                            </td>
+                            <td>
+                                <span class="fw-semibold">{{ ord.item_count }} items</span>
+                                <small class="text-muted d-block text-truncate" style="max-width: 220px;">
+                                    {% for item in ord.items %}
+                                        {{ item.quantity }}x {{ item.item_name }}{% if not loop.last %}, {% endif %}
+                                    {% endfor %}
+                                </small>
+                            </td>
+                            <td>
+                                <span class="fw-bold text-success fs-6">₹{{ "%.2f"|format(ord.total_amount) }}</span>
+                            </td>
+                            <td>
+                                <div>{{ ord.payment.payment_method if ord.payment else 'Cash' }}</div>
+                                <span class="badge bg-{{ 'success' if ord.payment and ord.payment.status == 'Paid' else 'warning text-dark' }} small">
+                                    {{ ord.payment.status if ord.payment else 'Pending' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div>{{ ord.created_at.strftime('%d %b %Y') }}</div>
+                                <small class="text-muted">{{ ord.created_at.strftime('%I:%M %p') }}</small>
+                            </td>
+                            <td>
+                                <span class="badge-status {{ ord.status | replace(' ', '-') }}">{{ ord.status }}</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                {% if ord.status not in ['Completed', 'Cancelled'] %}
+                                    <form method="POST" action="{{ url_for('admin.update_order_status', order_id=ord.id) }}" class="d-inline-flex gap-1 align-items-center">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <select name="target_status" class="form-select form-select-sm" style="width: auto;">
+                                            {% for st in OrderStatus.ALL %}
+                                                {% if st != ord.status %}
+                                                    <option value="{{ st }}">{{ st }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </select>
+                                        <button type="submit" class="btn btn-outline-primary btn-sm rounded-pill">Update</button>
+                                    </form>
+                                {% else %}
+                                    <span class="text-muted small">Locked</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i>
+                                No orders matching the selected search and status filters.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

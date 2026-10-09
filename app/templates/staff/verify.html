@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Verify Order & QR Pickup - Staff Counter{% endblock %}
+
+{% block extra_head %}
+<!-- HTML5 QR Code Scanner Library -->
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <span class="badge bg-success text-uppercase">Counter Dispatch</span>
+            <h2 class="fw-bold mb-0">Pickup & QR Verification</h2>
+            <p class="text-muted small mb-0">Scan customer QR codes or enter Order Reference to safely confirm food collection.</p>
+        </div>
+        <a href="{{ url_for('staff.dashboard') }}" class="btn btn-outline-secondary rounded-pill px-3">
+            <i class="bi bi-arrow-left me-1"></i> Kitchen Board
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Input & Camera Scanner Box -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                <h5 class="fw-bold mb-3"><i class="bi bi-upc-scan text-primary me-2"></i> Scan or Enter Order</h5>
+                
+                <!-- Camera QR Reader Container -->
+                <div id="qr-reader" class="rounded-3 overflow-hidden border mb-3" style="width: 100%; min-height: 220px; display: none;"></div>
+
+                <div class="d-flex gap-2 mb-3">
+                    <button type="button" class="btn btn-outline-primary btn-sm flex-grow-1" id="btn-toggle-camera">
+                        <i class="bi bi-camera-video me-1"></i> <span id="camera-btn-text">Start Camera Scanner</span>
+                    </button>
+                </div>
+
+                <!-- Manual Input Fallback Form -->
+                <form method="POST" action="{{ url_for('staff.verify_pickup') }}" id="verify-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="check">
+
+                    <div class="mb-3">
+                        <label for="order_query" class="form-label fw-semibold">Order Number or Scanned Code</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control form-control-lg" id="order_query" name="order_query" 
+                                   placeholder="e.g. ORD-20261009-8472" required autofocus>
+                        </div>
+                        <small class="text-muted">Type the human-readable order reference or scan student's QR pass.</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm">
+                        <i class="bi bi-shield-check me-2"></i> Verify Order Status
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Verification Results Pane -->
+        <div class="col-lg-7">
+            {% if error %}
+                <div class="alert alert-danger border-0 rounded-4 p-4 shadow-sm mb-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="bi bi-exclamation-octagon-fill fs-1 text-danger"></i>
+                        <div>
+                            <h5 class="fw-bold mb-1">Pickup Verification Warning</h5>
+                            <p class="mb-0">{{ error }}</p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if verified_order %}
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                    <div class="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-dark fs-5 px-3 py-1 rounded-3 fw-bold">{{ verified_order.queue_entry.queue_display if verified_order.queue_entry else '' }}</span>
+                            <h4 class="fw-bold mb-0 mt-2 text-dark">{{ verified_order.order_number }}</h4>
+                        </div>
+                        <span class="badge-status {{ verified_order.status | replace(' ', '-') }} fs-6">
+                            {{ verified_order.status }}
+                        </span>
+                    </div>
+
+                    <div class="card-body p-4 bg-white">
+                        <!-- Duplicate Pickup Alert -->
+                        {% if verified_order.status == 'Completed' %}
+                            <div class="alert alert-danger rounded-3 mb-4">
+                                <h6 class="fw-bold mb-1"><i class="bi bi-shield-x text-danger me-2"></i> DUPLICATE COLLECTION PREVENTED</h6>
+                                <p class="mb-0 small">This order has already been picked up and marked Completed on <strong>{{ verified_order.completed_at.strftime('%d %b %Y, %I:%M %p') if verified_order.completed_at else 'earlier' }}</strong>. Do not hand over food again.</p>
+                            </div>
+                        {% elif verified_order.status == 'Cancelled' %}
+                            <div class="alert alert-warning rounded-3 mb-4">
+                                <h6 class="fw-bold mb-1"><i class="bi bi-slash-circle me-2"></i> ORDER CANCELLED</h6>
+                                <p class="mb-0 small">This order was cancelled and must not be prepared or handed over.</p>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-success rounded-3 mb-4">
+                                <h6 class="fw-bold mb-1"><i class="bi bi-check-circle-fill me-2"></i> ORDER VERIFIED & READY FOR HANDOVER</h6>
+                                <p class="mb-0 small">Verify items with customer before confirming collection below.</p>
+                            </div>
+                        {% endif %}
+
+                        <!-- Customer info -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-sm-6">
+                                <span class="text-muted small fw-semibold text-uppercase">Student Name</span>
+                                <div class="fw-bold fs-5 text-dark">{{ verified_order.customer_name }}</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <span class="text-muted small fw-semibold text-uppercase">Mobile Contact</span>
+                                <div class="fw-bold fs-5 text-dark">{{ verified_order.customer_phone }}</div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Callout -->
+                        <div class="p-3 rounded-3 mb-4 border {% if verified_order.payment and verified_order.payment.status == 'Pending' %}bg-warning bg-opacity-10 border-warning{% else %}bg-success bg-opacity-10 border-success{% endif %}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="small fw-bold text-uppercase text-muted">Payment Requirement</span>
+                                    <h5 class="fw-bold mb-0">
+                                        {{ verified_order.payment.payment_method if verified_order.payment else 'Cash on Pickup' }}:
+                                        <span class="text-dark">₹{{ "%.2f"|format(verified_order.total_amount) }}</span>
+                                    </h5>
+                                </div>
+                                <span class="badge bg-{{ 'success' if verified_order.payment and verified_order.payment.status == 'Paid' else 'warning text-dark' }} fs-6 px-3 py-2">
+                                    {{ verified_order.payment.status if verified_order.payment else 'Pending' }}
+                                </span>
+                            </div>
+                            {% if verified_order.payment and verified_order.payment.status == 'Pending' %}
+                                <div class="small text-danger fw-bold mt-2">
+                                    <i class="bi bi-cash-coin me-1"></i> Please collect ₹{{ "%.2f"|format(verified_order.total_amount) }} cash from customer before handing over!
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Item details -->
+                        <h6 class="fw-bold small text-muted text-uppercase mb-2">Package Items Checklist:</h6>
+                        <ul class="list-group list-group-flush mb-4">
+                            {% for item in verified_order.items %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                                    <div>
+                                        <span class="badge bg-primary rounded-pill me-2">{{ item.quantity }}x</span>
+                                        <span class="fw-semibold">{{ item.item_name }}</span>
+                                    </div>
+                                    <span class="fw-bold">₹{{ "%.2f"|format(item.subtotal) }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+
+                        <!-- Confirm Pickup Action Button -->
+                        {% if verified_order.status in ['Pending', 'Accepted', 'Preparing', 'Ready for Pickup'] %}
+                            <form method="POST" action="{{ url_for('staff.verify_pickup') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="action" value="confirm_pickup">
+                                <input type="hidden" name="order_id" value="{{ verified_order.id }}">
+                                
+                                <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm py-3">
+                                    <i class="bi bi-check2-circle me-2"></i> Confirm Handover & Complete Order
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="card border-0 shadow-sm rounded-4 text-center py-5 bg-white">
+                    <div class="card-body">
+                        <i class="bi bi-qr-code fs-1 text-muted mb-3 d-block"></i>
+                        <h5 class="fw-bold">Awaiting QR Scan or Input</h5>
+                        <p class="text-muted small">Enter an order number or use the camera scanner on the left to verify customer pickup.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let html5QrCode = null;
+    let isCameraRunning = false;
+
+    const cameraBtn = document.getElementById('btn-toggle-camera');
+    const cameraText = document.getElementById('camera-btn-text');
+    const qrReaderDiv = document.getElementById('qr-reader');
+    const orderInput = document.getElementById('order_query');
+    const verifyForm = document.getElementById('verify-form');
+
+    if (cameraBtn) {
+        cameraBtn.addEventListener('click', () => {
+            if (isCameraRunning) {
+                stopCamera();
+            } else {
+                startCamera();
+            }
+        });
+    }
+
+    function startCamera() {
+        qrReaderDiv.style.display = 'block';
+        html5QrCode = new Html5Qrcode("qr-reader");
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText, decodedResult) => {
+                // Successfully scanned
+                orderInput.value = decodedText;
+                stopCamera();
+                verifyForm.submit();
+            },
+            (errorMessage) => {
+                // scanning frame error (ignore)
+            }
+        ).then(() => {
+            isCameraRunning = true;
+            cameraText.textContent = "Stop Camera";
+            cameraBtn.classList.replace('btn-outline-primary', 'btn-outline-danger');
+        }).catch(err => {
+            alert("Camera access was not granted or not supported on this device. Please use manual order number input.");
+            qrReaderDiv.style.display = 'none';
+        });
+    }
+
+    function stopCamera() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                html5QrCode.clear();
+                qrReaderDiv.style.display = 'none';
+                isCameraRunning = false;
+                cameraText.textContent = "Start Camera Scanner";
+                cameraBtn.classList.replace('btn-outline-danger', 'btn-outline-primary');
+            }).catch(err => console.error(err));
+        }
+    }
+</script>
+{% endblock %}

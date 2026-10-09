@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Live Dining Hall Queue Board{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-md-5">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="spinner-grow spinner-grow-sm text-danger" role="status"></span>
+                <span class="badge bg-danger text-uppercase fw-bold">Live Food Court Display</span>
+            </div>
+            <h2 class="display-6 fw-bold mb-0">Kitchen Order Queue Status</h2>
+        </div>
+        <div class="d-flex align-items-center gap-3 mt-3 mt-md-0">
+            <span class="badge bg-light text-dark border p-2 fs-6">
+                <i class="bi bi-clock me-1 text-primary"></i> Avg Prep: ~{{ avg_prep }} mins
+            </span>
+            <span class="badge bg-light text-dark border p-2 fs-6">
+                <i class="bi bi-arrow-repeat me-1 text-success"></i> Auto-Updating
+            </span>
+        </div>
+    </div>
+
+    <!-- Dual Queue Display -->
+    <div class="row g-4">
+        <!-- Ready for Pickup (Highlighted Green) -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden" style="border-top: 5px solid var(--primary-green) !important;">
+                <div class="card-header bg-success text-white p-3 d-flex justify-content-between align-items-center">
+                    <h4 class="fw-bold mb-0"><i class="bi bi-bell-fill me-2"></i> Ready for Pickup</h4>
+                    <span class="badge bg-white text-success fw-bold px-3 py-1">Counter Collection</span>
+                </div>
+                <div class="card-body p-4 bg-white">
+                    <div class="row g-3">
+                        {% set ready_orders = queue_board | selectattr('status', 'equalto', 'Ready for Pickup') | list %}
+                        {% if ready_orders %}
+                            {% for item in ready_orders %}
+                                <div class="col-sm-6">
+                                    <div class="p-3 rounded-4 text-center border shadow-sm" style="background-color: var(--primary-green-light); border-color: var(--primary-green) !important;">
+                                        <div class="display-5 fw-bold text-success mb-1">{{ item.queue_display }}</div>
+                                        <div class="fw-bold text-dark">{{ item.customer_name }}</div>
+                                        <small class="text-muted">{{ item.item_count }} items &bull; Ref: {{ item.order_number }}</small>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="col-12 text-center py-5 text-muted">
+                                <i class="bi bi-cup-hot fs-1 text-muted opacity-50 mb-2 d-block"></i>
+                                <h5 class="fw-semibold">No orders currently waiting for pickup</h5>
+                                <small>Orders ready for collection appear here with sound chime.</small>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preparing In Kitchen -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden" style="border-top: 5px solid var(--primary-orange) !important;">
+                <div class="card-header bg-dark text-white p-3 d-flex justify-content-between align-items-center">
+                    <h4 class="fw-bold mb-0"><i class="bi bi-fire me-2 text-warning"></i> Preparing In Kitchen</h4>
+                    <span class="badge bg-warning text-dark fw-bold px-3 py-1">In Queue</span>
+                </div>
+                <div class="card-body p-4 bg-white">
+                    <div class="row g-3">
+                        {% set prep_orders = queue_board | rejectattr('status', 'equalto', 'Ready for Pickup') | list %}
+                        {% if prep_orders %}
+                            {% for item in prep_orders %}
+                                <div class="col-sm-6">
+                                    <div class="p-3 rounded-4 text-center border shadow-sm bg-light">
+                                        <div class="display-6 fw-bold text-dark mb-1">{{ item.queue_display }}</div>
+                                        <div class="fw-semibold text-secondary">{{ item.customer_name }}</div>
+                                        <span class="badge-status {{ item.status | replace(' ', '-') }} mt-2">{{ item.status }}</span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="col-12 text-center py-5 text-muted">
+                                <i class="bi bi-check-circle fs-1 text-success mb-2 d-block"></i>
+                                <h5 class="fw-semibold">All orders prepared!</h5>
+                                <small>Place an order to see your live queue token.</small>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto refresh queue board every 7 seconds
+    setTimeout(() => {
+        window.location.reload();
+    }, 7000);
+</script>
+{% endblock %}

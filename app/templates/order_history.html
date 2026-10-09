@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}My Order History{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">My Order History</h2>
+            <p class="text-muted mb-0">View all your current and previous meal tokens placed on this account.</p>
+        </div>
+        <a href="{{ url_for('student.menu') }}" class="btn btn-primary rounded-pill px-4">
+            <i class="bi bi-plus-lg me-1"></i> Place New Order
+        </a>
+    </div>
+
+    {% if orders %}
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table align-middle table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Token / Order #</th>
+                            <th>Date & Time</th>
+                            <th>Items Summary</th>
+                            <th>Total Amount</th>
+                            <th>Payment</th>
+                            <th>Status</th>
+                            <th class="text-end pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ord in orders %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="fw-bold text-dark fs-6">{{ ord.queue_entry.queue_display if ord.queue_entry else 'Q-...' }}</div>
+                                    <small class="text-muted">{{ ord.order_number }}</small>
+                                </td>
+                                <td>
+                                    <div>{{ ord.created_at.strftime('%d %b %Y') }}</div>
+                                    <small class="text-muted">{{ ord.created_at.strftime('%I:%M %p') }}</small>
+                                </td>
+                                <td>
+                                    <span class="fw-semibold">{{ ord.item_count }} items:</span>
+                                    <small class="text-muted d-block text-truncate" style="max-width: 200px;">
+                                        {% for item in ord.items %}
+                                            {{ item.quantity }}x {{ item.item_name }}{% if not loop.last %}, {% endif %}
+                                        {% endfor %}
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="fw-bold text-success">₹{{ "%.2f"|format(ord.total_amount) }}</span>
+                                </td>
+                                <td>
+                                    <div>{{ ord.payment.payment_method if ord.payment else 'Cash' }}</div>
+                                    <span class="badge bg-{{ 'success' if ord.payment and ord.payment.status == 'Paid' else 'secondary' }} small">
+                                        {{ ord.payment.status if ord.payment else 'Pending' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-status {{ ord.status | replace(' ', '-') }}">{{ ord.status }}</span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <a href="{{ url_for('student.track_order', order_number=ord.order_number) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                        <i class="bi bi-broadcast me-1"></i> Track
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="card border-0 shadow-sm text-center py-5 rounded-4">
+            <div class="card-body">
+                <i class="bi bi-clock-history fs-1 text-muted mb-3 d-block"></i>
+                <h4 class="fw-bold">No previous orders found</h4>
+                <p class="text-muted">You haven't placed any food orders with this account yet.</p>
+                <a href="{{ url_for('student.menu') }}" class="btn btn-primary px-4 py-2 mt-2">
+                    Browse Campus Menu
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

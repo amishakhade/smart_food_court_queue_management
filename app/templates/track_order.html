@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Live Tracking - Order #{{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-secondary mb-1">Live Order Tracker</span>
+            <h2 class="fw-bold mb-0">Order #{{ order.order_number }}</h2>
+            <p class="text-muted small mb-0">Placed on {{ order.created_at.strftime('%d %b %Y, %I:%M %p') }}</p>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-3 mt-md-0">
+            <span class="badge-status {{ order.status | replace(' ', '-') }}" id="live-status-badge">
+                {{ order.status }}
+            </span>
+            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Stepper Tracker -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+        <h6 class="fw-bold text-muted small text-uppercase mb-4">Preparation Lifecycle</h6>
+        <div class="tracker-steps">
+            <div class="tracker-step {% if order.status in ['Pending', 'Accepted', 'Preparing', 'Ready for Pickup', 'Completed'] %}completed{% endif %} {% if order.status == 'Pending' %}active{% endif %}" id="step-1">
+                <div class="step-icon-circle">
+                    <i class="bi bi-receipt"></i>
+                </div>
+                <div class="step-label">Placed</div>
+            </div>
+
+            <div class="tracker-step {% if order.status in ['Accepted', 'Preparing', 'Ready for Pickup', 'Completed'] %}completed{% endif %} {% if order.status == 'Accepted' %}active{% endif %}" id="step-2">
+                <div class="step-icon-circle">
+                    <i class="bi bi-check2"></i>
+                </div>
+                <div class="step-label">Accepted</div>
+            </div>
+
+            <div class="tracker-step {% if order.status in ['Preparing', 'Ready for Pickup', 'Completed'] %}completed{% endif %} {% if order.status == 'Preparing' %}active{% endif %}" id="step-3">
+                <div class="step-icon-circle">
+                    <i class="bi bi-fire"></i>
+                </div>
+                <div class="step-label">Cooking</div>
+            </div>
+
+            <div class="tracker-step {% if order.status in ['Ready for Pickup', 'Completed'] %}completed{% endif %} {% if order.status == 'Ready for Pickup' %}active{% endif %}" id="step-4">
+                <div class="step-icon-circle">
+                    <i class="bi bi-bell-fill"></i>
+                </div>
+                <div class="step-label">Ready for Pickup</div>
+            </div>
+
+            <div class="tracker-step {% if order.status == 'Completed' %}completed active{% endif %}" id="step-5">
+                <div class="step-icon-circle">
+                    <i class="bi bi-bag-check-fill"></i>
+                </div>
+                <div class="step-label">Completed</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Live Queue Metrics Card -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0">Queue & Waiting Status</h5>
+                    <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">
+                        Token: <strong class="text-primary">{{ order.queue_entry.queue_display if order.queue_entry else 'Q-...' }}</strong>
+                    </span>
+                </div>
+
+                <div class="row g-3 my-2">
+                    <div class="col-sm-6">
+                        <div class="p-4 bg-light rounded-4 text-center border">
+                            <span class="text-muted small fw-bold text-uppercase d-block mb-1">Queue Position</span>
+                            <div class="fs-2 fw-bold text-primary" id="live-queue-position">
+                                {% if order.status == 'Ready for Pickup' %}
+                                    <span class="text-success"><i class="bi bi-bell-fill"></i> READY!</span>
+                                {% elif order.status == 'Completed' %}
+                                    <span class="text-muted"><i class="bi bi-check-circle-fill"></i> Picked Up</span>
+                                {% elif order.status == 'Cancelled' %}
+                                    <span class="text-danger"><i class="bi bi-x-circle-fill"></i> Cancelled</span>
+                                {% elif position and position > 0 %}
+                                    #{{ position }}
+                                {% else %}
+                                    In Kitchen
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">In active preparation queue</small>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-6">
+                        <div class="p-4 bg-light rounded-4 text-center border">
+                            <span class="text-muted small fw-bold text-uppercase d-block mb-1">Est. Waiting Time</span>
+                            <div class="fs-2 fw-bold text-success" id="live-wait-time">
+                                {% if order.status == 'Ready for Pickup' %}
+                                    Ready Now!
+                                {% elif order.status in ['Completed', 'Cancelled'] %}
+                                    0 mins
+                                {% else %}
+                                    ~{{ estimated_wait_mins }} mins
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">Calculated dynamically</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notice banner -->
+                <div class="alert alert-info border-0 rounded-3 mt-3 d-flex align-items-center mb-0">
+                    <i class="bi bi-info-circle-fill fs-5 me-2"></i>
+                    <small>This page refreshes automatically in real-time. Once your status turns <strong>Ready for Pickup</strong>, head to Counter #1 with your QR code.</small>
+                </div>
+            </div>
+
+            <!-- Cancel Order Section (Eligible if Pending & <= 5 mins) -->
+            <div id="cancel-order-container" class="card border-0 shadow-sm rounded-4 p-4 bg-white" style="display: {{ 'block' if order.is_cancellable else 'none' }};">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="fw-bold text-danger mb-1">Need to Cancel?</h6>
+                        <small class="text-muted">Orders can be cancelled only while still Pending in queue within 5 minutes of placing.</small>
+                    </div>
+                    <button type="button" class="btn btn-outline-danger btn-sm px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                        <i class="bi bi-x-circle me-1"></i> Cancel Order
+                    </button>
+                </div>
+            </div>
+
+            <!-- Order Details -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mt-4 bg-white">
+                <h5 class="fw-bold mb-3">Order Details</h5>
+                <ul class="list-group list-group-flush mb-3">
+                    {% for item in order.items %}
+                        <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                            <div>
+                                <span class="fw-semibold">{{ item.item_name }}</span>
+                                <small class="text-muted d-block">Qty: {{ item.quantity }}</small>
+                            </div>
+                            <span class="fw-bold">₹{{ "%.2f"|format(item.subtotal) }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <div class="d-flex justify-content-between pt-2 border-top">
+                    <span class="fw-bold fs-5">Total:</span>
+                    <span class="fw-bold fs-5 text-success">₹{{ "%.2f"|format(order.total_amount) }}</span>
+                </div>
+                <div class="mt-2 text-muted small">
+                    <span>Payment: <strong>{{ order.payment.payment_method if order.payment else 'Cash on Pickup' }}</strong> ({{ order.payment.status if order.payment else 'Pending' }})</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR Code Sidebar -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 text-center bg-white sticky-top" style="top: 85px;">
+                <h5 class="fw-bold mb-2">Your Pickup Pass</h5>
+                <p class="text-muted small mb-3">Show this QR code at the counter for contactless collection.</p>
+                
+                <div class="qr-container mb-3">
+                    {% if order.qr_code_path %}
+                        <img src="{{ url_for('static', filename=order.qr_code_path) }}" alt="QR Code" class="qr-image">
+                    {% else %}
+                        <div class="p-4 bg-light text-muted">QR Pass ready upon confirmation</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <span class="badge bg-dark fs-6 px-3 py-2 rounded-pill">Token: {{ order.queue_entry.queue_display if order.queue_entry else '' }}</span>
+                </div>
+
+                <a href="{{ url_for('static', filename=order.qr_code_path) }}" download="Order_{{ order.order_number }}_QR.png" class="btn btn-outline-dark btn-sm rounded-pill px-3">
+                    <i class="bi bi-download me-1"></i> Save QR to Phone
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Confirmation Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger" id="cancelModalLabel">Cancel Order Confirmation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3">
+                <p class="mb-0">Are you sure you want to cancel order <strong>#{{ order.order_number }}</strong>? This action will remove your token from the kitchen queue.</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Keep Order</button>
+                <form method="POST" action="{{ url_for('student.cancel_order', order_number=order.order_number) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger rounded-pill px-4">Yes, Cancel Order</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        initOrderTracking('{{ order.order_number }}');
+    });
+</script>
+{% endblock %}
