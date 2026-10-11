@@ -21,10 +21,11 @@ class Config:
 
     # Persistent SQLite database kept inside the project.
     DATA_FOLDER = BASE_DIR / 'data'
-    SQLITE_DATABASE_PATH = DATA_FOLDER / 'smart_food_court.sqlite3'
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        'DATABASE_URL', f"sqlite:///{SQLITE_DATABASE_PATH.as_posix()}"
-    )
+    SQLITE_DATABASE_PATH = DATA_FOLDER / 'food_court.db'
+    # Always resolve the application database from this project directory.
+    # This prevents a relative DATABASE_URL or a different working directory
+    # from silently creating a second SQLite database without the tables.
+    SQLALCHEMY_DATABASE_URI = f"sqlite:///{SQLITE_DATABASE_PATH.as_posix()}"
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {}

@@ -40,6 +40,7 @@ ENV/
 instance/
 *.sqlite
 *.db
+backup_pre_sqlite_*/
 
 # IDEs
 .vscode/

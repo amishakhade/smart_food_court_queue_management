@@ -23,6 +23,14 @@ def create_app(config_name=None):
     db.init_app(app)
     csrf.init_app(app)
 
+    # Import every model before create_all(), otherwise SQLAlchemy only knows
+    # about tables from models imported so far. This is intentionally
+    # non-destructive: create_all() creates missing tables and never drops or
+    # overwrites existing data.
+    from app import models  # noqa: F401
+    with app.app_context():
+        db.create_all()
+
     # Ensure required static directories exist
     qr_dir = Path(app.config['STATIC_FOLDER']) / 'qr_codes'
     qr_dir.mkdir(parents=True, exist_ok=True)
