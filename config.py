@@ -19,24 +19,15 @@ class Config:
     SESSION_COOKIE_SECURE = False  # Set to True when using HTTPS in production
     PERMANENT_SESSION_LIFETIME = 86400  # 24 hours in seconds
 
-    # Database setup: MySQL via PyMySQL
-    MYSQL_HOST = os.getenv('MYSQL_HOST', 'localhost')
-    MYSQL_PORT = os.getenv('MYSQL_PORT', '3306')
-    MYSQL_USER = os.getenv('MYSQL_USER', 'foodcourt_user')
-    MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD', 'foodcourt_pass123')
-    MYSQL_DB = os.getenv('MYSQL_DB', 'smart_food_court')
-
-    # Construct default MySQL URL
-    DEFAULT_DB_URL = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}?charset=utf8mb4"
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', DEFAULT_DB_URL)
+    # Persistent SQLite database kept inside the project.
+    DATA_FOLDER = BASE_DIR / 'data'
+    SQLITE_DATABASE_PATH = DATA_FOLDER / 'smart_food_court.sqlite3'
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        'DATABASE_URL', f"sqlite:///{SQLITE_DATABASE_PATH.as_posix()}"
+    )
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_recycle': 280,
-        'pool_pre_ping': True,
-        'pool_size': 10,
-        'max_overflow': 20,
-    }
+    SQLALCHEMY_ENGINE_OPTIONS = {}
 
     # Food Court Business Defaults
     FOOD_COURT_NAME = "Campus Smart Food Court"

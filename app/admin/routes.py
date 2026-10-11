@@ -18,7 +18,7 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 @admin_bp.route('/dashboard')
 @admin_required
 def dashboard():
-    """Main administrative analytics dashboard with real-time MySQL statistics."""
+    """Main administrative analytics dashboard with real-time SQLite statistics."""
     today_start = datetime.combine(date.today(), datetime.min.time())
 
     # 1. Database-calculated KPI counters

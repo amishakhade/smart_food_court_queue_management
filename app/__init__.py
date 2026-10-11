@@ -16,6 +16,9 @@ def create_app(config_name=None):
     app = Flask(__name__)
     app.config.from_object(config_by_name.get(config_name, Config))
 
+    if str(app.config.get('SQLALCHEMY_DATABASE_URI', '')).startswith('sqlite:///'):
+        Path(app.config['SQLITE_DATABASE_PATH']).parent.mkdir(parents=True, exist_ok=True)
+
     # Initialize extensions
     db.init_app(app)
     csrf.init_app(app)

@@ -116,16 +116,7 @@ def seed_database():
             'prep_time': 10,
             'is_veg': True,
             'desc': 'Char-grilled cottage cheese cubes wrapped in flaky paratha with sliced onions and tangy sauces.',
-            'image_url': 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=600&auto=format&fit=crop&q=80'
-        },
-        {
-            'category': 'Snacks',
-            'name': 'Peri Peri Masala French Fries',
-            'price': Decimal('75.00'),
-            'prep_time': 8,
-            'is_veg': True,
-            'desc': 'Crispy golden potato fingers tossed in aromatic spicy peri-peri herb seasoning.',
-            'image_url': 'https://images.unsplash.com/photo-1576107232684-1279f3908594?w=600&auto=format&fit=crop&q=80'
+            'image_url': '/static/images/menu/paneer_tikka_kathi_roll.jpg'
         },
         {
             'category': 'Snacks',
@@ -163,7 +154,7 @@ def seed_database():
             'prep_time': 10,
             'is_veg': True,
             'desc': 'Fluffy puffed bhaturas served with spicy Amritsari chickpea curry, pickled onions, and green chilli.',
-            'image_url': 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&auto=format&fit=crop&q=80'
+            'image_url': '/static/images/menu/chole_bhature.jpg'
         },
         {
             'category': 'Meals',
@@ -221,7 +212,7 @@ def seed_database():
             'prep_time': 3,
             'is_veg': True,
             'desc': 'Soft milk solid dumplings deep-fried and soaked in warm fragrant cardamom sugar syrup.',
-            'image_url': 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&auto=format&fit=crop&q=80'
+            'image_url': '/static/images/menu/hot_gulab_jamun.jpg'
         },
         {
             'category': 'Desserts',
@@ -241,7 +232,7 @@ def seed_database():
             'prep_time': 8,
             'is_veg': True,
             'desc': 'Thin golden rice crepe stuffed with spiced potato mash, served with coconut chutney & hot sambar.',
-            'image_url': 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&auto=format&fit=crop&q=80'
+            'image_url': '/static/images/menu/crispy_masala_dosa.jpg'
         },
         {
             'category': 'Breakfast',
@@ -250,7 +241,7 @@ def seed_database():
             'prep_time': 5,
             'is_veg': True,
             'desc': 'Flattened rice tossed with turmeric, mustard seeds, onions, topped with crunchy ratlami sev.',
-            'image_url': 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&auto=format&fit=crop&q=80'
+            'image_url': '/static/images/menu/indori_poha.jpg'
         }
     ]
 
@@ -270,6 +261,23 @@ def seed_database():
                     is_available=True
                 )
                 db.session.add(menu_item)
+
+    # Correct image paths on already-seeded databases as well as new ones.
+    image_fixes = {
+        'Chole Bhature (2 Pcs)': '/static/images/menu/chole_bhature.jpg',
+        'Crispy Masala Dosa': '/static/images/menu/crispy_masala_dosa.jpg',
+        'Hot Gulab Jamun (2 Pcs)': '/static/images/menu/hot_gulab_jamun.jpg',
+        'Indori Poha with Sev & Peanuts': '/static/images/menu/indori_poha.jpg',
+        'Paneer Tikka Kathi Roll': '/static/images/menu/paneer_tikka_kathi_roll.jpg',
+    }
+    for item_name, image_path in image_fixes.items():
+        item = MenuItem.query.filter_by(name=item_name).first()
+        if item:
+            item.image_url = image_path
+
+    # Remove only this menu item. Existing order_items keep their historical
+    # item_name/unit_price snapshot and their nullable foreign key.
+    MenuItem.query.filter(MenuItem.name.ilike('%peri%peri%french%fries%')).delete(synchronize_session=False)
 
     db.session.commit()
     print("Database seeding completed successfully!")

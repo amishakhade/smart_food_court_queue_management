@@ -1,6 +1,6 @@
 """
 SQLAlchemy models for Smart Food Court & Queue Management System.
-Normalized MySQL schema with full integrity, relationships, and auditing.
+Normalized schema with full integrity, relationships, and auditing.
 """
 from datetime import datetime
 from decimal import Decimal

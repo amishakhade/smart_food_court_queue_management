@@ -11,10 +11,10 @@ app = create_app(os.getenv('FLASK_ENV', 'development'))
 
 @app.cli.command("init-db")
 def init_db_command():
-    """Create all database tables in MySQL without dropping existing data."""
+    """Create all SQLite tables without dropping existing data."""
     with app.app_context():
         db.create_all()
-        click.echo(click.style("Database tables created successfully in MySQL!", fg="green"))
+        click.echo(click.style(f"SQLite database ready: {app.config['SQLITE_DATABASE_PATH']}", fg="green"))
 
 
 @app.cli.command("seed-db")
